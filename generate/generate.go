@@ -239,13 +239,11 @@ func (rg *ResourceGenerator) generateResources(name string, resource Resource, i
 		}
 	}
 
-	// Pass in the following information into the template
-	sname := structName(name)
-	structNameParts := strings.Split(name, ".")
-	basename := structName(structNameParts[0])
+	info := parseStructInfo(name)
 
 	templateData := struct {
 		Name              string
+		Struct            structInfo
 		StructName        string
 		Basename          string
 		Resource          Resource
@@ -255,8 +253,7 @@ func (rg *ResourceGenerator) generateResources(name string, resource Resource, i
 		HasCreationPolicy bool
 	}{
 		Name:              name,
-		StructName:        sname,
-		Basename:          basename,
+		Struct:            info,
 		Resource:          resource,
 		IsCustomProperty:  isCustomProperty,
 		Version:           spec.ResourceSpecificationVersion,
@@ -277,8 +274,12 @@ func (rg *ResourceGenerator) generateResources(name string, resource Resource, i
 		return fmt.Errorf("failed to format Go file for resource %s: %s", name, err)
 	}
 
+	path := "cloudformation/" + info.PackagePath
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		return err
+	}
+	fn := path + "/" + info.FileName
 	// Check if the file has changed since the last time generate ran
-	fn := "cloudformation/resources/" + filename(name)
 	current, err := ioutil.ReadFile(fn)
 
 	if err != nil || bytes.Compare(formatted, current) != 0 {
@@ -396,6 +397,7 @@ func generatePolymorphicProperty(name string, property Property) {
 	}
 
 	// Write the file out
+
 	if err := ioutil.WriteFile("cloudformation/resources/"+filename(name), formatted, 0644); err != nil {
 		fmt.Printf("Error: Failed to write JSON Schema\n%s\n", err)
 		os.Exit(1)

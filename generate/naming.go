@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"path"
+	"strings"
+)
 
 // filename takes a resource or property name (e.g. AWS::CloudFront::Distribution.Restrictions)
 // and returns an appropriate filename for the generated struct (e.g. aws-cloudfront-distribution_restrictions.go)
@@ -34,4 +37,31 @@ func structName(input string) string {
 
 	return output
 
+}
+
+type structInfo struct {
+	PackagePath string
+	PackageName string
+	FileName    string
+	BaseName    string
+	Name        string
+}
+
+func parseStructInfo(input string) structInfo {
+	packageParts := strings.Split(input, "::")
+	name := packageParts[len(packageParts)-1]
+	nameParts := strings.Split(name, ".")
+	packageParts = packageParts[:len(packageParts)-1]
+
+	var result structInfo
+	result.PackagePath = strings.ToLower(path.Join(packageParts...))
+	if len(packageParts) == 0 {
+		result.PackageName = "cloudformation"
+	} else {
+		result.PackageName = strings.ToLower(packageParts[len(packageParts)-1])
+	}
+	result.BaseName = nameParts[0]
+	result.Name = strings.Join(nameParts, "_")
+	result.FileName = strings.ToLower(result.Name) + ".go"
+	return result
 }
